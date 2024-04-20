@@ -10,6 +10,8 @@ import bodyParser from "body-parser";
 const PROJECT_URL = process.env.PROJECT_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+const supabase = createClient(PROJECT_URL, ANON_KEY);
+
 const app = express();
 const PORT = 8080;
 
@@ -23,10 +25,10 @@ app.post("/", async (req, res) => {
   // This is an array of glucose data that is sent from the Vital webhook
   const glucose_data = body.data.data;
 
-  const vital_uid = body.data.user_id;
-  console.log("Vital UID:", vital_uid);
+  const vita_uid = body.data.user_id;
+  const uid = await getUidByVitaUid(vita_uid);
 
-  const supabase = createClient(PROJECT_URL, ANON_KEY);
+  console.log("UID:", uid);
 
   for (let i = 0; i < glucose_data.length; i++) {
     const glucoseLevelInMmol = glucose_data[i].value;
@@ -36,7 +38,7 @@ app.post("/", async (req, res) => {
 
     const { error } = await supabase
       .from("glucose_level")
-      .insert([{ value: glucoseLevelInMgdl }]);
+      .insert([{ value: glucoseLevelInMgdl, user_id: uid }]);
 
     if (error) {
       console.error("ERROR: ", error);
@@ -50,4 +52,18 @@ app.post("/", async (req, res) => {
 
 function converteMmolToMgdl(mmol) {
   return mmol * 18.0182;
+}
+
+async function getUidByVitaUid(vita_uid) {
+  const { data, error } = await supabase
+    .from("wearable_connection")
+    .select()
+    .eq("vital_uid", vita_uid);
+
+  if (error) {
+    console.log(error);
+    return;
+  }
+
+  return data[0].user_id;
 }
