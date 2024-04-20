@@ -38,7 +38,13 @@ app.post("/", async (req, res) => {
 
     const { error } = await supabase
       .from("glucose_level")
-      .insert([{ value: glucoseLevelInMgdl, user_id: uid }]);
+      .insert([
+        {
+          value: glucoseLevelInMgdl,
+          user_id: uid,
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
     if (error) {
       console.error("ERROR: ", error);

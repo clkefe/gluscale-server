@@ -44,7 +44,7 @@ async function startJob() {
   Object.keys(userAverages).forEach((userId) => {
     const avg = userAverages[userId].sum / userAverages[userId].count;
     if (avg > 70 && avg < 150) {
-      giveDragonCart(userId);
+      giveDragonCart(userId, yesterdayStr);
       console.log(`User ${userId} gets a dragon cart.`);
     } else {
       console.log(`User ${userId} does not get a dragon cart.`);
@@ -64,15 +64,23 @@ new CronJob(
   "America/Los_Angeles"
 );
 
-async function giveDragonCart(userId) {
-  //TODO: Replace this with the actual dragon that was assigned to the user previously
-  const dragon = DRAGONS[Math.floor(Math.random() * DRAGONS.length)];
+async function giveDragonCart(userId, yesterdayStr) {
+  const { data: eggData, error: eggError } = await supabase
+    .from("dragon_egg")
+    .select()
+    .eq("user_id", userId)
+    .gte("created_at", yesterdayStr);
+
+  var dragon = DRAGONS[0];
+
+  if (eggData.length > 0) {
+    dragon = DRAGONS[eggData[0].dragon_id || 0];
+  }
 
   const { error } = await supabase.from("dragon_cart").insert([
     {
       dragon_name: dragon.name,
       dragon_image_full: dragon.imageURLFull,
-      dragon_egg_images: dragon.eggImagesURL,
       user_id: userId,
     },
   ]);
@@ -85,21 +93,13 @@ async function giveDragonCart(userId) {
 
 const DRAGONS = [
   {
+    id: 0,
     name: "Fire Dragon",
     imageURLFull: "https://i.imgur.com/1.png",
-    eggImagesURL: [
-      "https://i.imgur.com/2.png",
-      "https://i.imgur.com/3.png",
-      "https://i.imgur.com/4.png",
-    ],
   },
   {
+    id: 1,
     name: "Ice Dragon",
     imageURLFull: "https://i.imgur.com/5.png",
-    eggImagesURL: [
-      "https://i.imgur.com/6.png",
-      "https://i.imgur.com/7.png",
-      "https://i.imgur.com/8.png",
-    ],
   },
 ];
