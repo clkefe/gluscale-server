@@ -79,8 +79,7 @@ async function giveDragonCart(userId, yesterdayStr) {
 
   const { error } = await supabase.from("dragon_cart").insert([
     {
-      dragon_name: dragon.name,
-      dragon_image_full: dragon.imageURLFull,
+      dragon_id: dragon.id,
       user_id: userId,
     },
   ]);
@@ -89,6 +88,14 @@ async function giveDragonCart(userId, yesterdayStr) {
     console.error("ERROR: ", error);
     return;
   }
+
+  await supabase.from("dragon_egg").delete().eq("user_id", userId);
+  await supabase.from("dragon_egg").insert([
+    {
+      user_id: userId,
+      dragon_id: Math.floor(Math.random() * DRAGONS.length),
+    },
+  ]);
 }
 
 const DRAGONS = [
