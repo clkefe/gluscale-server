@@ -90,7 +90,7 @@ async function getUidByVitaUid(vita_uid) {
 }
 
 async function getAIFeedback(userId) {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
   const supabase = createClient(PROJECT_URL, ANON_KEY);
 
   // Get user's latest glucose level
