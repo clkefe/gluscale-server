@@ -46,7 +46,7 @@ const app = express();
 
 app.use(bodyParser.json());
 app.listen(process.env.PORT || 3000, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`🚀 Server running on port ${process.env.PORT || 3000}`)
 );
 
 app.get("/", async (req, res) => {
