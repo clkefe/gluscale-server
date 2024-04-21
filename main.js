@@ -6,6 +6,19 @@ import { createClient } from "@supabase/supabase-js";
 import express from "express";
 import bodyParser from "body-parser";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { CronJob } from "cron";
+
+import { startJob } from "./cronJob.js";
+
+new CronJob(
+  "0 20 * * *",
+  async () => {
+    await startJob();
+  },
+  null,
+  true,
+  "America/Los_Angeles"
+);
 
 // Gemini init
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
@@ -34,6 +47,10 @@ const PORT = 8080;
 
 app.use(bodyParser.json());
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+app.get("/", async (req, res) => {
+  res.json({ message: "Hello World!" });
+});
 
 // This is the endpoint that the Vital webhook will send data to
 app.post("/", async (req, res) => {

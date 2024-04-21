@@ -13,7 +13,7 @@ const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const supabase = createClient(PROJECT_URL, ANON_KEY);
 
-async function startJob() {
+export async function startJob() {
   const now = new Date();
   const filterDate = new Date(now);
   filterDate.setDate(filterDate.getDate() - 1);
@@ -32,7 +32,6 @@ async function startJob() {
   }
 
   const userAverages = data.reduce((acc, curr) => {
-    console.log(curr);
     if (!acc[curr.user_id]) {
       acc[curr.user_id] = { sum: 0, count: 0 };
     }
