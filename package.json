@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx nodemon ./main.js localhost 8080"
+    "dev": "npx nodemon ./main.js localhost 8080",
+    "start": "node ./main.js"
   },
   "author": "",
   "license": "ISC",
