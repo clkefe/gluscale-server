@@ -7,6 +7,22 @@ import express from "express";
 import bodyParser from "body-parser";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Gemini init
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
+const PROMPT = `You are an assistant who is tasked to help children with diabetes. Your main task is to give children live feedback on their glucose levels using the information you know about them in a short message. Your message should consist of around 2 short sentences. Your answer should be kid-friendly, almost (but not exactly) entertaining them while they adapt to their new lifestyle. Give them basic information such as telling them their glucose level is decreasing, and they should do a certain task (eating, exercising, etc..) The message should be brief, and its first sentence should directly respond to their glucose level. Lastly, don't forget that you are talking to a child. So your message should be simple and easy to understand; don't use too many medical terms.
+
+As a reminder, the suggested glucose levels for children are 80-150.
+
+Child's data:
+“””
+Current glucose Level: <glucose_level> (mg/dL),
+How long ago they diagnosed diabetes: <time_diagnosis>
+Medication that they are on (for diabetes): <medication>,
+Age: <age>
+“””
+
+Your feedback (AI):`;
+
 // Supabase credentials
 const PROJECT_URL = process.env.PROJECT_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -35,17 +51,12 @@ app.post("/", async (req, res) => {
     const glucoseLevelInMmol = glucose_data[i].value;
     const glucoseLevelInMgdl = converteMmolToMgdl(glucoseLevelInMmol);
 
-    console.log(glucoseLevelInMgdl, "mg/dl");
-
-    const { error } = await supabase
-      .from("glucose_level")
-      .insert([
-        {
-          value: glucoseLevelInMgdl,
-          user_id: uid,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+    const { error } = await supabase.from("glucose_level").insert([
+      {
+        value: glucoseLevelInMgdl,
+        user_id: uid,
+      },
+    ]);
 
     if (error) {
       console.error("ERROR: ", error);
@@ -54,13 +65,14 @@ app.post("/", async (req, res) => {
     }
   }
 
+  await getAIFeedback(uid);
+
   res.status(200).end();
 });
 
 function converteMmolToMgdl(mmol) {
   return mmol * 18.0182;
 }
-
 
 async function getUidByVitaUid(vita_uid) {
   const { data, error } = await supabase
@@ -73,38 +85,46 @@ async function getUidByVitaUid(vita_uid) {
     return;
   }
 
-  return data[0].user_id;
+  //TODO: Testing; remove this
+  return data[0]?.user_id || "e7b91d14-44c7-4ff6-9403-cbc2b044e9a2";
 }
 
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
-var message ="You are now a virtual companion for a CHILDREN\'S APP that is focused on DIABETES, BLOOD SUGAR/GLUCOSE, and INSULIN. PLEASE BE AS KID FRIENDLY AS POSSIBLE NO MATTER WHAT THE USER SAYS AND USE SIMPLE TERMS AND WORDS THAT A KID WOULD UNDERSTAND. THIS IS A VERY IMPORTANT RULE You will be sent real-time data on a child\'s blood sugar level, which is {GLUCOSE} currently at a periodic interval and other information such as the type of diabetes they have, how long they have known they had diabetes, medication, and age. From this information, you will provide advice to the child user on what to do with that information as someone who is NEW TO HAVING DIABETES and IS A CHILD."
-
-async function run() {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+async function getAIFeedback(userId) {
+  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
   const supabase = createClient(PROJECT_URL, ANON_KEY);
 
+  // Get user's latest glucose level
   const { data, error } = await supabase
     .from("glucose_level")
-    .select("value");
+    .select("value")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1);
 
+  // Get user's survey data
   const { data: survey_data, error: survey_error } = await supabase
     .from("survey_data")
-    .select();
+    .select()
+    .eq("user_id", userId);
 
-  const new_message = message.replace(/{GLUCOSE}/g, data[0].value);
-  const prompt = new_message;
-  console.log(prompt);
+  const glucoseLevel = data[0].value;
+  const survey = survey_data[0];
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
+  // Generate the prompt
+  var newPrompt = PROMPT;
+  newPrompt = newPrompt.replace("<glucose_level>", glucoseLevel);
+  newPrompt = newPrompt.replace("<time_diagnosis>", survey?.time_diagnosis);
+  newPrompt = newPrompt.replace("<medication>", survey?.medication);
+  newPrompt = newPrompt.replace("<age>", survey?.age);
+
+  console.log("Prompt:", newPrompt);
+
+  const { response } = await model.generateContent(newPrompt);
   const text = response.text();
 
-  const { data: gemini_data, error: gemini_error } = await supabase
+  console.log("AI:", text);
+
+  await supabase
     .from("gemini_feedback")
-    .insert([{advice: text}])
-
-  console.log(text);
+    .insert([{ advice: text, user_id: userId }]);
 }
-run();
-
