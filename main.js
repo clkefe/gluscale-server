@@ -43,10 +43,11 @@ const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(PROJECT_URL, ANON_KEY);
 
 const app = express();
-const PORT = 8080;
 
 app.use(bodyParser.json());
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(process.env.PORT || 3000, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
 
 app.get("/", async (req, res) => {
   res.json({ message: "Hello World!" });

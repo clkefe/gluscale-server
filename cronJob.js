@@ -53,16 +53,6 @@ export async function startJob() {
   console.log(userAverages);
 }
 
-new CronJob(
-  "0 20 * * *",
-  async () => {
-    await startJob();
-  },
-  null,
-  true,
-  "America/Los_Angeles"
-);
-
 async function giveDragonCart(userId, yesterdayStr) {
   const { data: eggData, error: eggError } = await supabase
     .from("dragon_egg")
