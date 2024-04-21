@@ -11,6 +11,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const PROJECT_URL = process.env.PROJECT_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+const supabase = createClient(PROJECT_URL, ANON_KEY);
+
 const app = express();
 const PORT = 8080;
 
@@ -24,10 +26,10 @@ app.post("/", async (req, res) => {
   // This is an array of glucose data that is sent from the Vital webhook
   const glucose_data = body.data.data;
 
-  const vital_uid = body.data.user_id;
-  console.log("Vital UID:", vital_uid);
+  const vita_uid = body.data.user_id;
+  const uid = await getUidByVitaUid(vita_uid);
 
-  const supabase = createClient(PROJECT_URL, ANON_KEY);
+  console.log("UID:", uid);
 
   for (let i = 0; i < glucose_data.length; i++) {
     const glucoseLevelInMmol = glucose_data[i].value;
@@ -37,7 +39,13 @@ app.post("/", async (req, res) => {
 
     const { error } = await supabase
       .from("glucose_level")
-      .insert([{ value: glucoseLevelInMgdl }]);
+      .insert([
+        {
+          value: glucoseLevelInMgdl,
+          user_id: uid,
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
     if (error) {
       console.error("ERROR: ", error);
@@ -53,7 +61,21 @@ function converteMmolToMgdl(mmol) {
   return mmol * 18.0182;
 }
 
-/////////GEMINI//////////////////////////////////////////////////////////////////////////////////
+
+async function getUidByVitaUid(vita_uid) {
+  const { data, error } = await supabase
+    .from("wearable_connection")
+    .select()
+    .eq("vital_uid", vita_uid);
+
+  if (error) {
+    console.log(error);
+    return;
+  }
+
+  return data[0].user_id;
+}
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
 var message ="You are now a virtual companion for a CHILDREN\'S APP that is focused on DIABETES, BLOOD SUGAR/GLUCOSE, and INSULIN. PLEASE BE AS KID FRIENDLY AS POSSIBLE NO MATTER WHAT THE USER SAYS AND USE SIMPLE TERMS AND WORDS THAT A KID WOULD UNDERSTAND. THIS IS A VERY IMPORTANT RULE You will be sent real-time data on a child\'s blood sugar level, which is {GLUCOSE} currently at a periodic interval and other information such as the type of diabetes they have, how long they have known they had diabetes, medication, and age. From this information, you will provide advice to the child user on what to do with that information as someone who is NEW TO HAVING DIABETES and IS A CHILD."
@@ -86,4 +108,3 @@ async function run() {
 }
 run();
 
-////////////////////////////////////////////////////////
